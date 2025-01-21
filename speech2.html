@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Continuous Speech Translation</title>
+</head>
+<body>
+    <h1>Continuous Speech to Translation</h1>
+    <p>Click the button and speak in English. The translations will appear below continuously:</p>
+    <button id="startBtn">Start Listening</button>
+    <button id="stopBtn">Stop Listening</button>
+    <button id="clearBtn">Clear</button>
+    <p><strong>Original:</strong></p>
+    <div id="originalText" style="border: 1px solid #ccc; padding: 10px; min-height: 50px; max-height: 150px; overflow-y: auto;">...</div>
+    <p><strong>Translated:</strong></p>
+    <div id="translatedText" style="border: 1px solid #ccc; padding: 10px; min-height: 50px; max-height: 150px; overflow-y: auto;">...</div>
+
+    <script>
+        const startBtn = document.getElementById('startBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        const originalText = document.getElementById('originalText');
+        const translatedText = document.getElementById('translatedText');
+
+        const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+        recognition.lang = 'en-US';
+        recognition.continuous = true;
+
+        let fullOriginalText = "";
+        let fullTranslatedText = "";
+
+        recognition.onstart = () => {
+            originalText.textContent = "Listening...";
+            translatedText.textContent = "...";
+        };
+
+        recognition.onresult = async (event) => {
+            let spokenText = "";
+            for (let i = event.resultIndex; i < event.results.length; i++) {
+                spokenText += event.results[i][0].transcript + " ";
+            }
+            fullOriginalText += spokenText.trim() + " ";
+            originalText.textContent = fullOriginalText.trim();
+
+            // Translate the text to Indonesian using Google Translate API
+            const apiUrl = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=id&dt=t&q=${encodeURIComponent(spokenText.trim())}`;
+            try {
+                const response = await fetch(apiUrl);
+                const result = await response.json();
+                const translation = result[0][0][0];
+                fullTranslatedText += translation + " ";
+                translatedText.textContent = fullTranslatedText.trim();
+            } catch (error) {
+                translatedText.textContent = "Error during translation.";
+            }
+        };
+
+        recognition.onend = () => {
+            // Automatically restart the recognition if it was stopped and not manually stopped
+            if (!manualStop) {
+                recognition.start();
+            }
+        };
+
+        let manualStop = false;
+
+        startBtn.addEventListener('click', () => {
+            manualStop = false;
+            recognition.start();
+        });
+
+        stopBtn.addEventListener('click', () => {
+            manualStop = true;
+            recognition.stop();
+        });
+
+        clearBtn.addEventListener('click', () => {
+            fullOriginalText = "";
+            fullTranslatedText = "";
+            originalText.textContent = "...";
+            translatedText.textContent = "...";
+        });
+    </script>
+</body>
+</html>
